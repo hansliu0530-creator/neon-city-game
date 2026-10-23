@@ -6594,12 +6594,12 @@ const REAL_M=['Male_Adult_10','Male_Adult_17','Business_Male_01','Sports_Male_04
 (function(){if(!window.RBX||!THREE.GLTFLoader||!THREE.SkeletonUtils)return;const L=new THREE.GLTFLoader(),TL=new THREE.TextureLoader(),texC={};
   const b64=x=>{const b=atob(x),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u.buffer;},P=x=>new Promise((r,j)=>L.parse(b64(x),'',r,j));
   const tex=k=>{if(k in texC)return texC[k];const src=RBX.tex[k];if(!src)return texC[k]=null;const t=TL.load(src);t.flipY=false;t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return texC[k]=t;};
-  const run=async()=>{try{for(const [n,x] of Object.entries(RBX.models)){const g=await P(x);
+  const run=async()=>{try{const MG=await Promise.all(Object.entries(RBX.models).map(([n,x])=>P(x).then(g=>[n,g])));for(const [n,g] of MG){
       g.scene.traverse(m=>{if(!m.isMesh)return;const ms=Array.isArray(m.material)?m.material:[m.material];
         ms.forEach(mt=>{const pre=mt.name.split('_')[0],suf=mt.name.split('_').slice(1).join('_'),t=tex(pre+'_'+(suf.startsWith('equ')?'equipment':suf)+'_color');
           if(t){mt.map=t;mt.color.set(0xffffff);}mt.metalness=0;mt.roughness=suf==='head'?.6:.78;if(suf==='opacity'){mt.alphaTest=.45;mt.side=THREE.DoubleSide;mt.transparent=false;}mt.needsUpdate=true;});});
       REAL.tpl[n]=g.scene;}
-    for(const [n,x] of Object.entries(RBX.anims)){const g=await P(x),c=g.animations[0].clone();c.name=n;
+    const AG=await Promise.all(Object.entries(RBX.anims).map(([n,x])=>P(x).then(g=>[n,g])));for(const [n,g] of AG){const c=g.animations[0].clone();c.name=n;
       c.tracks=c.tracks.filter(t=>t.name.endsWith('.quaternion')&&!t.name.startsWith('Bip01.')&&!t.name.startsWith('Bip01_Footsteps'));REAL.clips[n]=c;}
     REAL.ready=true;try{onRealReady();}catch(e){console.warn(e);}}catch(e){console.warn('avatars failed',e);if(!REAL.retry){REAL.retry=1;REAL.tpl={};REAL.clips={};setTimeout(run,1200);return;}REAL.failed=true;}REAL.done=true;if(window.__realDone)window.__realDone();};setTimeout(run,0);})();
 function realHuman(o){const key=o.real||(o.cop?(typeof stars==='function'&&stars()>=4?'Police_Male_02':'Police_Male_03'):pick(o.fem?REAL_F:REAL_M)),fem=key.includes('Female');
@@ -6858,7 +6858,7 @@ function resetCone(c){c.x=c.home[0];c.z=c.home[1];c.y=0;c.vx=c.vz=c.vy=0;c.rx=c.
 
 /* ================= traffic & police ================= */
 const NODE=i=>G[i];
-function pickTraffic(){const TRAFFIC=CARS.filter(c=>c.tw>0&&!c.npcOnlyHide),TW=TRAFFIC.reduce((a,c)=>a+c.tw,0);let r=Math.random()*TW;for(const c of TRAFFIC){r-=c.tw;if(r<=0)return c;}return TRAFFIC[0];}
+function pickTraffic(){const TRAFFIC=CARS.filter(c=>c.tw>0&&!c.npcOnlyHide&&(!c.glb||GLBCAR[c.glb])),TW=TRAFFIC.reduce((a,c)=>a+c.tw,0);let r=Math.random()*TW;for(const c of TRAFFIC){r-=c.tw;if(r<=0)return c;}return TRAFFIC[0];}
 function makeVehicle(sp,x,z,h,kind,color){const col=color!==undefined?color:(sp.fixed?sp.color:sp.two?pick([0x8fd0e8,0xf2f2f2,0x1c1d22,0xe8433a,0xf3a6b8,0x9ac85a,0xffd23a,0x7a8b9a]):pick(PAINTS));const m=npcModel(sp,col,kind!=='parked');scene.add(m.root);
   const v={sp,color:col,root:m.root,fx:m.fx,paint:m.paint,x,z,h,v:0,kind,driver:kind!=='parked',hp:sp.hp,stun:0,wait:0,cruise:sp.two==='bike'?rnd(4,5.5):sp.two?rnd(9,13):rnd(9,13)*(sp.mass>5000?.8:1),dropCD:0,drops:0,nav:false,dead:false,fullModel:m.full,wheels:m.full?m.full.wheels:null,tilt:0,yr:0};
   setCircles(v);placeV(v);vehicles.push(v);return v;}
@@ -8117,9 +8117,9 @@ window.GLBDONE=false;
 (function(){if(!window.GLBD||!THREE.GLTFLoader){window.GLBDONE=true;return;}const L=new THREE.GLTFLoader();let started=false;
   const one=k=>new Promise(res=>{try{const b=atob(GLBD[k]),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);GLBD[k]=null;
     L.parse(u.buffer,'',g=>{g.scene.updateMatrixWorld(true);GLBCAR[k]=g.scene;for(const sp of CARS)if(sp.glb===k)delete TEMPL[sp.name];res();},e=>{console.error(e);res();});}catch(e){console.error(e);res();}});
-  const go=async()=>{if(started)return;started=true;for(const k of Object.keys(GLBD)){if(!GLBD[k])continue;await one(k);await new Promise(r=>setTimeout(r,30));}
+  const go=async()=>{if(started)return;started=true;const ks=Object.keys(GLBD).filter(k=>GLBD[k]);let qi=0;const wk=async()=>{while(qi<ks.length){const k=ks[qi++];await one(k);}};await Promise.all([wk(),wk(),wk()]);
     window.GLBDONE=true;try{for(const v of vehicles.slice())if(v.sp.glb&&!v.mine&&!v.misTarget&&!(v===car)&&hyp(v.x-player.x,v.z-player.z)>30)removeV(v);}catch(_){}};
-  window.__realDone=go;if(REAL.done)go();setTimeout(go,25000);})();
+  window.__realDone=go;if(REAL.done)go();setTimeout(go,8000);})();
 function buildGlbCar(sp,color){const src=GLBCAR[sp.glb],root=new THREE.Group(),body=new THREE.Group();root.add(body);const keep=!!sp.glbKeep;
   const paint=new THREE.MeshPhysicalMaterial({color:color!==undefined?color:sp.color,metalness:.5,roughness:.34,clearcoat:1,clearcoatRoughness:.07,envMapIntensity:1.3});
   const fw=sp.glbFwd||'+x',ry=fw==='+x'?-Math.PI/2:fw==='-z'?Math.PI:0,mp=P=>fw==='+x'?[-P.z,P.y,P.x]:fw==='-z'?[-P.x,P.y,-P.z]:[P.x,P.y,P.z],wre=new RegExp(sp.glbWheel||'WheelStock_','i');
@@ -8484,8 +8484,8 @@ modeUI.innerHTML='<div class="shopBox glass" style="max-width:560px"><h2 style="
 document.getElementById('app').appendChild(modeUI);
 let modePicked=false;
 function openModeUI(){const ch=Math.min(STORY2.ch,SCH.length);$('mdStoryS').textContent=ch>=SCH.length?'主線已完成，可以自由探索並玩所有支線':ch>0?'繼續：'+SCH[ch].t+'（'+ch+'/'+SCH.length+'）':'跟著 Marcus 從街頭小弟一路爬到 NEON BAY 之王，共 '+SCH.length+' 章，含過場動畫';modeUI.hidden=false;}
-function pickMode(md){if(!(REAL.done&&window.GLBDONE)&&!pickMode.wait){pickMode.wait=Date.now();const box=modeUI.querySelector('.shopBox');const old=box.innerHTML;box.innerHTML='<h2 style="margin:0 0 6px">載入中…</h2><div id="ldTxt" style="color:#cfd3da;font-size:14px">正在準備人物和車輛，請稍等</div>';
-    const iv=setInterval(()=>{const ok=REAL.done&&window.GLBDONE,late=Date.now()-pickMode.wait>30000;const t=document.getElementById('ldTxt');if(t)t.textContent=(REAL.done?'✔ 人物':'… 人物')+'　'+(window.GLBDONE?'✔ 車輛':'… 車輛');
+function pickMode(md){if(!REAL.done&&!pickMode.wait){pickMode.wait=Date.now();const box=modeUI.querySelector('.shopBox');const old=box.innerHTML;box.innerHTML='<h2 style="margin:0 0 6px">載入中…</h2><div id="ldTxt" style="color:#cfd3da;font-size:14px">正在準備人物和車輛，請稍等</div>';
+    const iv=setInterval(()=>{const ok=REAL.done,late=Date.now()-pickMode.wait>12000;const t=document.getElementById('ldTxt');if(t)t.textContent=(REAL.done?'✔ 人物':'… 人物')+'　'+(window.GLBDONE?'✔ 車輛':'… 車輛');
       if(ok||late){clearInterval(iv);box.innerHTML=old;$('mdStory').addEventListener('click',()=>pickMode('story'));$('mdFree').addEventListener('click',()=>pickMode('free'));pickMode(md);}},250);return;}
   GMODE=md;modePicked=true;modeUI.hidden=true;applyMode();$('goBtn').click();saveGame(true);
   if(md==='story'&&STORY2.ch===0&&!MIS.cur)setTimeout(()=>{if(!CINE&&!MIS.cur)startMission(STORY_M);},1400);
