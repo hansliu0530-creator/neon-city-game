@@ -13112,13 +13112,14 @@ try{if(MOBILE){const pr=Math.min(window.devicePixelRatio||1,1.35);if(renderer.ge
 /* (3) lost WebGL context: let the browser restore it instead of killing the page */
 try{const cv=renderer.domElement;cv.addEventListener('webglcontextlost',e=>{e.preventDefault();B49.lost=true;try{toast('畫面重新整理中…',1500);}catch(_){}},false);
   cv.addEventListener('webglcontextrestored',()=>{B49.lost=false;},false);}catch(e){}
-/* (4) auto-resume after Safari reloads the tab */
-try{setInterval(()=>{try{if(mode==='play')sessionStorage.setItem('acRun',JSON.stringify({t:Date.now(),m:typeof GMODE!=='undefined'?GMODE:'free'}));}catch(e){}},5000);
-  const R=JSON.parse(sessionStorage.getItem('acRun')||'null');
-  if(R&&Date.now()-R.t<15*60*1000){let n=0;const iv=setInterval(()=>{n++;if(n>240){clearInterval(iv);return;}try{
-      const sp=document.getElementById('splash');if(sp&&!sp.hidden&&sp.offsetParent!==null&&getComputedStyle(sp).display!=='none'){sp.click();return;}
-      const md=document.getElementById(R.m==='story'?'mdStory':'mdFree');if(md&&md.offsetParent!==null){md.click();return;}
-      if(mode==='play'){clearInterval(iv);B49.resumed=true;try{toast('↻ 已自動接續上次的進度（點一下畫面恢復聲音）',2600);}catch(e){}}}catch(e){}},500);}}catch(e){}
+/* (4) if Safari reloaded the tab mid-game (out of memory), don't auto-restart the game (that caused a crash loop);
+   instead drop to the light quality so the next run fits, and tell the player. Position is still restored by the save. */
+try{setInterval(()=>{try{if(mode==='play')sessionStorage.setItem('acRun',String(Date.now()));}catch(e){}},5000);
+  const R=+(sessionStorage.getItem('acRun')||0);sessionStorage.removeItem('acRun');
+  if(R&&Date.now()-R<15*60*1000&&QUAL.k!=='low'){QUAL.k='low';try{localStorage.setItem('qual','low');}catch(e){}try{applyQual();}catch(e){}
+    B49.low=true;setTimeout(()=>{try{toast('手機記憶體不足，已自動切到省電畫質（設定裡可改回）',4000);}catch(e){}},3000);}}catch(e){}
+/* (5) phones: smaller sun shadow map (2048² → 1024² frees ~12 MB of GPU memory) */
+try{if(MOBILE&&sun.shadow.mapSize.x>1024){sun.shadow.mapSize.set(1024,1024);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}}}catch(e){}
 function b49Tick(dt){}
 
 
